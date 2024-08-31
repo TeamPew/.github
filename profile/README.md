@@ -33,9 +33,9 @@ As I write this, it's mid August 2024, and version 5.0 is up. I'm moving the cod
 ### Roadmap
 
 #### Backend
-- Move to pipelines using `maestro` instead of crontab
+- Move to pipelines using `maestro` instead of crontab [DONE]
 - Setup logging and warnings when pipelines crash
-- Setup performance graphs using Grafana or similar
+- Setup performance graphs using Grafana or similar [DONE]
 - Split some of the larger modules into parts
 - Create necessary backend services to support a Discord bot and a webapp
 
