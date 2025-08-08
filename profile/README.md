@@ -30,35 +30,38 @@ In the current running version, a summary of each match is published to Discord.
 
 As I write this, it's mid August 2024, and version 5.0 is up. I'm moving the code to new repositories, and a roadmap is in the works. 
 
-### Roadmap
 
-#### Backend
-- Move to pipelines using `maestro` instead of crontab [DONE]
-- Setup logging and warnings when pipelines crash
-- Setup performance graphs using Grafana or similar [DONE]
-- Split some of the larger modules into parts
-- Create necessary backend services to support a Discord bot and a webapp
+### Version 6.0 
 
-#### API 
-- Expose necessary backend services as endpoitns
-- Document using swagger
-- Logging
+At some point I think we (meaning me, but it sounds less lonely when I write we) need to stop with the versioning and accept that it's really been a long, long early access. Perhaps we are actually closer to a v.1.0 than a v.10.0 which is where we are headed at the current pace. In any case, there has been some rather lager developments lately, so here goes. 
 
-#### Discord bot
-- Enable some user interactivity of sorts
-- Logging
-- ....
-- Profit!
+In the last six months, I first rewrote the pipeline code into an R6 class. This caused a fair amount of headahces since I wasn't really familiar with R6 and/or OOP, but after a fashion, it works quite well. This then was deployed, and things were quite stable - i.e. running for months without much hiccups. 
 
-#### Webapp
-- Stats, all the stats
-- Some logging?!
-- And graphs, more graphs!
+During July of 2025, I looked into joining a Norwegian eSport team as their in-house volunteer data guy. This prompted further rewrites, because the then current iteration didn't really scale that well beyond 10-15 users that the pipeline tracked, and all interactions was directly with the database. In true TeamPew style, this prompted, guess what, another rewrite. 
 
-#### Infrastructure
-- Setup a development/test environment as well as staging and production
-- Pipelines to push code to the server
-- Unit tests
+The good thing about the rewrites is that every time I do it, I learn something new, and it usually improves the solution. This time, it's starting to look like something that is getting close to production grade, at least for a citizen developer like myself. What I've done is: 
+
+- Realized that containers are the way to go, so all services apart from the database and telemetry storage is now containerized (I did containerize the database as well, but after a small bout of an overeager developer coupled with an AI-agent with more permissions than it should, we (in this case, me and the AI-agent) decided that the database should live as a host service. This has caused significant cursing when dealing with docker networking, but it works.
+- Moved from a single run pipeline to a multi step pipeline with queuing
+- Implemented RabbitMQ (for queuing)
+- Ditched plumbeR as the API, and adopted FastAPI (i.e. Python)
+- Rewritten the Discord bot (still in Javascript), now interacts with the FastAPI
+- Implemented workers (in R) to handle the pipeline
+- Implemented Komodo to deploy and handle the containers
+- Implemented docker container registry in GitHub, with GitHub Actions that rebuild the images on new releases
+
+It's now August 2025, and while not everything is back up, it's getting closer. The system is now super over-engineered for #instant-insanity, which at the most usually tracks 10-12 players. The current setup can easily handle 150 players, and at that point, the primary bottleneck is the API rate limit (10/minute) from the official API. I've implemented rate limiting and throttling in the pipeline, so it can handle more than that, but at some point the pipeline takes a long time to run given those limits. 
+
+I've also refactored parts of the pipeline that was quite slow (processing telemetry), and there are now four parts of the pipeline: 
+
+- match discovery (handled by the pipeline-scheduler service) : checks for new matches, updates the database and creates a message in the queue
+- match summary (handled by the match-summary worker): updates the database with a summary from the /matches endpoint, as well as grabbing the telemetry URL
+- match telemetry processing (handled by the telemetry worker): downloads the telemetry data, transforms it to parquet format
+- match stats processing (handled by the match-stats worker): updates a lot of telemetry related stats to the database
+
+There are two primary benefits from this. First and foremost, an error in a single match does not stop the whole pipeline, it just updates this match to failed and goes about the next one. Secondly, it allows for scaling, where I can adjust the number of workers via Docker-compose (or rather Komodo). 
+
+
 
 ### About the team
 
